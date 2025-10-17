@@ -2,10 +2,10 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use rust_prelude_plus::prelude::*;
-use key_paths_derive::Keypaths;
+use key_paths_derive::Keypath;
 use std::collections::HashMap;
 
-#[derive(Keypaths, Debug, Clone)]
+#[derive(Keypath, Debug, Clone)]
 struct BenchmarkData {
     id: u32,
     name: String,
@@ -34,11 +34,7 @@ fn benchmark_filtering(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("keypath_filter", size), size, |b, _| {
             b.iter(|| {
-                let result: Vec<BenchmarkData> = data
-                    .iter()
-                    .filter_by_keypath(BenchmarkData::value_r(), |&value| value > 50.0)
-                    .cloned()
-                    .collect();
+                let result = filter_by_keypath(data.clone(), BenchmarkData::value(), |&value| value > 50.0).unwrap();
                 black_box(result)
             })
         });
@@ -66,10 +62,7 @@ fn benchmark_mapping(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("keypath_map", size), size, |b, _| {
             b.iter(|| {
-                let result: Vec<String> = data
-                    .iter()
-                    .map_keypath(BenchmarkData::name_r(), |name| name.to_uppercase())
-                    .collect();
+                let result = map_keypath_collection(&data, BenchmarkData::name(), |name| name.to_uppercase()).unwrap();
                 black_box(result)
             })
         });
@@ -96,9 +89,7 @@ fn benchmark_grouping(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("keypath_group", size), size, |b, _| {
             b.iter(|| {
-                let result: HashMap<String, Vec<BenchmarkData>> = data
-                    .group_by_keypath(BenchmarkData::category_r(), |category| category.clone())
-                    .unwrap();
+                let result = group_by_keypath(&data, BenchmarkData::category(), |category| category.clone()).unwrap();
                 black_box(result)
             })
         });
@@ -125,10 +116,7 @@ fn benchmark_folding(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("keypath_fold", size), size, |b, _| {
             b.iter(|| {
-                let result: f64 = data
-                    .iter()
-                    .fold_keypath(BenchmarkData::value_r(), 0.0, |acc, &value| acc + value)
-                    .unwrap();
+                let result = fold_keypath(data.clone(), BenchmarkData::value(), 0.0, |acc, &value| acc + value).unwrap();
                 black_box(result)
             })
         });
@@ -154,12 +142,8 @@ fn benchmark_composable_operations(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("keypath_chain", size), size, |b, _| {
             b.iter(|| {
-                let result: Vec<String> = data
-                    .iter()
-                    .chain_keypath_ops()
-                    .filter_by_keypath(BenchmarkData::value_r(), |&value| value > 50.0)
-                    .map_keypath(BenchmarkData::name_r(), |name| name.clone())
-                    .collect();
+                let filtered = filter_by_keypath(data.clone(), BenchmarkData::value(), |&value| value > 50.0).unwrap();
+                let result = map_keypath_collection(&filtered, BenchmarkData::name(), |name| name.clone()).unwrap();
                 black_box(result)
             })
         });
@@ -187,12 +171,9 @@ fn benchmark_nested_keypaths(c: &mut Criterion) {
         
         group.bench_with_input(BenchmarkId::new("nested_keypath", size), size, |b, _| {
             b.iter(|| {
-                let result: Vec<String> = data
-                    .iter()
-                    .map_keypath(BenchmarkData::tags_r(), |tags| {
-                        tags.first().unwrap_or(&"default".to_string()).clone()
-                    })
-                    .collect();
+                let result = map_keypath_collection(&data, BenchmarkData::name(), |name| {
+                    name.len()
+                }).unwrap();
                 black_box(result)
             })
         });
@@ -224,7 +205,7 @@ fn benchmark_parallel_operations(c: &mut Criterion) {
             b.iter(|| {
                 let result: Vec<String> = parallel_collections::par_map_keypath(
                     &data,
-                    BenchmarkData::name_r(),
+                    BenchmarkData::name(),
                     |name| name.to_uppercase()
                 ).unwrap();
                 black_box(result)
@@ -235,7 +216,7 @@ fn benchmark_parallel_operations(c: &mut Criterion) {
             b.iter(|| {
                 let result: Vec<String> = data
                     .iter()
-                    .map_keypath(BenchmarkData::name_r(), |name| name.to_uppercase())
+                    .map_keypath(BenchmarkData::name(), |name| name.to_uppercase())
                     .collect();
                 black_box(result)
             })
