@@ -1,61 +1,61 @@
 //! Collection operations for keypath-based functional programming
 
-use key_paths_core::KeyPathss;
-use crate::error::{KeyPathsResult, KeyPathsError};
+use key_paths_core::KeyPaths;
+use crate::error::{KeyPathResult, KeyPathError};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
 
 /// Extension trait for collections with keypath operations
 pub trait KeyPathsCollectionExt<T> {
     /// Extract values from keypaths into collections
-    fn collect_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<Vec<V>>
+    fn collect_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<Vec<V>>
     where
         V: Clone;
     
     /// Partition elements by keypath predicate
-    fn partition_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<(Vec<T>, Vec<T>)>
+    fn partition_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<(Vec<T>, Vec<T>)>
     where
         T: Clone,
         F: Fn(&V) -> bool;
     
     /// Group elements by keypath values
-    fn group_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, f: F) -> KeyPathsResult<HashMap<V, Vec<T>>>
+    fn group_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, f: F) -> KeyPathResult<HashMap<V, Vec<T>>>
     where
         V: std::hash::Hash + Eq + Clone,
         T: Clone,
         F: Fn(&V) -> V;
     
     /// Sort elements by keypath values
-    fn sort_by_keypath<V, F>(&mut self, keypath: impl KeyPaths<T, V>, compare: F) -> KeyPathsResult<()>
+    fn sort_by_keypath<V, F>(&mut self, keypath: impl KeyPaths<T, V>, compare: F) -> KeyPathResult<()>
     where
         F: Fn(&V, &V) -> std::cmp::Ordering;
     
     /// Find elements matching keypath conditions
-    fn find_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<Option<&T>>
+    fn find_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<Option<&T>>
     where
         F: Fn(&V) -> bool;
     
     /// Check if any element matches keypath condition
-    fn any_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<bool>
+    fn any_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<bool>
     where
         F: Fn(&V) -> bool;
     
     /// Check if all elements match keypath condition
-    fn all_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<bool>
+    fn all_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<bool>
     where
         F: Fn(&V) -> bool;
     
     /// Count elements matching keypath condition
-    fn count_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<usize>
+    fn count_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<usize>
     where
         F: Fn(&V) -> bool;
     
     /// Get unique values from keypath
-    fn unique_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<HashSet<V>>
+    fn unique_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<HashSet<V>>
     where
         V: std::hash::Hash + Eq + Clone;
     
     /// Get distinct values from keypath with counts
-    fn distinct_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<HashMap<V, usize>>
+    fn distinct_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<HashMap<V, usize>>
     where
         V: std::hash::Hash + Eq + Clone;
     
@@ -66,7 +66,7 @@ pub trait KeyPathsCollectionExt<T> {
         keypath1: impl KeyPaths<T, V1>,
         keypath2: impl KeyPaths<U, V2>,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         F: Fn(&V1, &V2) -> R;
     
@@ -76,7 +76,7 @@ pub trait KeyPathsCollectionExt<T> {
         keypath: impl KeyPaths<T, V>,
         window_size: usize,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         V: Clone,
         F: Fn(&[V]) -> R;
@@ -87,14 +87,14 @@ pub trait KeyPathsCollectionExt<T> {
         keypath: impl KeyPaths<T, V>,
         window_size: usize,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         V: Clone,
         F: Fn(&[V]) -> R;
 }
 
 impl<T> KeyPathsCollectionExt<T> for Vec<T> {
-    fn collect_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<Vec<V>>
+    fn collect_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<Vec<V>>
     where
         V: Clone,
     {
@@ -106,7 +106,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(result)
     }
     
-    fn partition_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<(Vec<T>, Vec<T>)>
+    fn partition_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<(Vec<T>, Vec<T>)>
     where
         T: Clone,
         F: Fn(&V) -> bool,
@@ -126,7 +126,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok((left, right))
     }
     
-    fn group_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, f: F) -> KeyPathsResult<HashMap<V, Vec<T>>>
+    fn group_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, f: F) -> KeyPathResult<HashMap<V, Vec<T>>>
     where
         V: std::hash::Hash + Eq + Clone,
         T: Clone,
@@ -141,7 +141,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(groups)
     }
     
-    fn sort_by_keypath<V, F>(&mut self, keypath: impl KeyPaths<T, V>, compare: F) -> KeyPathsResult<()>
+    fn sort_by_keypath<V, F>(&mut self, keypath: impl KeyPaths<T, V>, compare: F) -> KeyPathResult<()>
     where
         F: Fn(&V, &V) -> std::cmp::Ordering,
     {
@@ -153,7 +153,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(())
     }
     
-    fn find_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<Option<&T>>
+    fn find_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<Option<&T>>
     where
         F: Fn(&V) -> bool,
     {
@@ -166,7 +166,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(None)
     }
     
-    fn any_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<bool>
+    fn any_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<bool>
     where
         F: Fn(&V) -> bool,
     {
@@ -179,7 +179,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(false)
     }
     
-    fn all_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<bool>
+    fn all_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<bool>
     where
         F: Fn(&V) -> bool,
     {
@@ -192,7 +192,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(true)
     }
     
-    fn count_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathsResult<usize>
+    fn count_by_keypath<V, F>(&self, keypath: impl KeyPaths<T, V>, predicate: F) -> KeyPathResult<usize>
     where
         F: Fn(&V) -> bool,
     {
@@ -206,7 +206,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(count)
     }
     
-    fn unique_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<HashSet<V>>
+    fn unique_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<HashSet<V>>
     where
         V: std::hash::Hash + Eq + Clone,
     {
@@ -218,7 +218,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         Ok(unique)
     }
     
-    fn distinct_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathsResult<HashMap<V, usize>>
+    fn distinct_by_keypath<V>(&self, keypath: impl KeyPaths<T, V>) -> KeyPathResult<HashMap<V, usize>>
     where
         V: std::hash::Hash + Eq + Clone,
     {
@@ -236,7 +236,7 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         keypath1: impl KeyPaths<T, V1>,
         keypath2: impl KeyPaths<U, V2>,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         F: Fn(&V1, &V2) -> R,
     {
@@ -257,13 +257,13 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         keypath: impl KeyPaths<T, V>,
         window_size: usize,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         V: Clone,
         F: Fn(&[V]) -> R,
     {
         if window_size == 0 || window_size > self.len() {
-            return Err(KeyPathsError::CollectionError {
+            return Err(KeyPathError::CollectionError {
                 message: format!("Invalid window size: {}", window_size),
             });
         }
@@ -285,13 +285,13 @@ impl<T> KeyPathsCollectionExt<T> for Vec<T> {
         keypath: impl KeyPaths<T, V>,
         window_size: usize,
         f: F,
-    ) -> KeyPathsResult<Vec<R>>
+    ) -> KeyPathResult<Vec<R>>
     where
         V: Clone,
         F: Fn(&[V]) -> R,
     {
         if window_size == 0 {
-            return Err(KeyPathsError::CollectionError {
+            return Err(KeyPathError::CollectionError {
                 message: "Window size must be greater than 0".to_string(),
             });
         }
@@ -320,13 +320,13 @@ pub mod specialized {
     /// Operations for HashMap collections
     pub trait KeyPathsHashMapExt<K, V> {
         /// Transform values using keypath
-        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathsResult<HashMap<K, R>>
+        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathResult<HashMap<K, R>>
         where
             K: Clone,
             F: Fn(&T) -> R;
         
         /// Filter by keypath predicate on values
-        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathsResult<HashMap<K, V>>
+        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathResult<HashMap<K, V>>
         where
             K: Clone,
             V: Clone,
@@ -334,7 +334,7 @@ pub mod specialized {
     }
     
     impl<K, V> KeyPathsHashMapExt<K, V> for HashMap<K, V> {
-        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathsResult<HashMap<K, R>>
+        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathResult<HashMap<K, R>>
         where
             K: Clone,
             F: Fn(&T) -> R,
@@ -347,7 +347,7 @@ pub mod specialized {
             Ok(result)
         }
         
-        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathsResult<HashMap<K, V>>
+        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathResult<HashMap<K, V>>
         where
             K: Clone,
             V: Clone,
@@ -367,13 +367,13 @@ pub mod specialized {
     /// Operations for BTreeMap collections
     pub trait KeyPathsBTreeMapExt<K, V> {
         /// Transform values using keypath
-        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathsResult<BTreeMap<K, R>>
+        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathResult<BTreeMap<K, R>>
         where
             K: Clone + Ord,
             F: Fn(&T) -> R;
         
         /// Filter by keypath predicate on values
-        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathsResult<BTreeMap<K, V>>
+        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathResult<BTreeMap<K, V>>
         where
             K: Clone + Ord,
             V: Clone,
@@ -381,7 +381,7 @@ pub mod specialized {
     }
     
     impl<K, V> KeyPathsBTreeMapExt<K, V> for BTreeMap<K, V> {
-        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathsResult<BTreeMap<K, R>>
+        fn map_values_keypath<T, F, R>(&self, keypath: impl KeyPaths<V, T>, f: F) -> KeyPathResult<BTreeMap<K, R>>
         where
             K: Clone + Ord,
             F: Fn(&T) -> R,
@@ -394,7 +394,7 @@ pub mod specialized {
             Ok(result)
         }
         
-        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathsResult<BTreeMap<K, V>>
+        fn filter_values_keypath<T, F>(&self, keypath: impl KeyPaths<V, T>, predicate: F) -> KeyPathResult<BTreeMap<K, V>>
         where
             K: Clone + Ord,
             V: Clone,
