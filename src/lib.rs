@@ -18,23 +18,12 @@
 //!
 //! ```rust
 //! use rust_prelude_plus::prelude::*;
+//! use key_paths_derive::Keypaths;
 //!
-//! #[derive(Debug, Clone)]
+//! #[derive(Keypaths, Debug, Clone)]
 //! struct Person {
 //!     name: String,
 //!     age: u32,
-//! }
-//!
-//! struct NameKeyPath;
-//! impl KeyPath<Person, String> for NameKeyPath {
-//!     fn get<'a>(&self, data: &'a Person) -> &'a String { &data.name }
-//!     fn get_mut<'a>(&self, data: &'a mut Person) -> &'a mut String { &mut data.name }
-//! }
-//!
-//! struct AgeKeyPath;
-//! impl KeyPath<Person, u32> for AgeKeyPath {
-//!     fn get<'a>(&self, data: &'a Person) -> &'a u32 { &data.age }
-//!     fn get_mut<'a>(&self, data: &'a mut Person) -> &'a mut u32 { &mut data.age }
 //! }
 //!
 //! let people = vec![
@@ -43,8 +32,8 @@
 //! ];
 //!
 //! // Filter people by age and extract their names
-//! let young_people = filter_by_keypath(people, AgeKeyPath, |&age| age < 30).unwrap();
-//! let young_people_names: Vec<String> = map_keypath_collection(&young_people, NameKeyPath, |name| name.clone()).unwrap();
+//! let young_people = filter_by_keypath(people, Person::age_r(), |&age| age < 30).unwrap();
+//! let young_people_names: Vec<String> = map_keypath_collection(&young_people, Person::name_r(), |name| name.clone()).unwrap();
 //!
 //! println!("Young people: {:?}", young_people_names);
 //! ```

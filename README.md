@@ -73,26 +73,26 @@ This section demonstrates the key differences between using keypath higher-order
 
 | Operation | Traditional Approach | KeyPath HOF Approach | Benefits |
 |-----------|---------------------|---------------------|----------|
-| **Map** | `people.iter().map(\|p\| p.name.to_uppercase()).collect()` | `map_keypath_collection(&people, NameKeyPath, \|name\| name.to_uppercase())` | Type-safe, reusable keypath |
-| **Filter** | `people.into_iter().filter(\|p\| p.age < 30).collect()` | `filter_by_keypath(people, AgeKeyPath, \|&age\| age < 30)` | Compile-time field validation |
-| **Find** | `people.iter().find(\|p\| p.age == 30)` | `find_by_keypath(people, AgeKeyPath, \|&age\| age == 30)` | Type-safe field access |
-| **Fold** | `people.iter().fold(0, \|acc, p\| acc + p.age)` | `fold_keypath(people, AgeKeyPath, 0, \|acc, &age\| acc + age)` | Guaranteed field existence |
+| **Map** | `people.iter().map(\|p\| p.name.to_uppercase()).collect()` | `map_keypath_collection(&people, Person::name_r(), \|name\| name.to_uppercase())` | Type-safe, reusable keypath |
+| **Filter** | `people.into_iter().filter(\|p\| p.age < 30).collect()` | `filter_by_keypath(people, Person::age_r(), \|&age\| age < 30)` | Compile-time field validation |
+| **Find** | `people.iter().find(\|p\| p.age == 30)` | `find_by_keypath(people, Person::age_r(), \|&age\| age == 30)` | Type-safe field access |
+| **Fold** | `people.iter().fold(0, \|acc, p\| acc + p.age)` | `fold_keypath(people, Person::age_r(), 0, \|acc, &age\| acc + age)` | Guaranteed field existence |
 
 ### Nested Data Access Comparison
 
 | Scenario | Traditional Approach | KeyPath HOF Approach | Benefits |
 |----------|---------------------|---------------------|----------|
-| **Nested Field Access** | `people.iter().map(\|p\| p.address.city.clone()).collect()` | `map_keypath_collection(&people, AddressCityKeyPath, \|city\| city.clone())` | Type-safe nested access |
-| **Deep Nesting** | `people.iter().map(\|p\| p.address.coordinates.latitude).collect()` | `map_keypath_collection(&people, LatKeyPath, \|lat\| *lat)` | Compile-time path validation |
-| **Optional Fields** | `people.iter().filter_map(\|p\| p.address.as_ref().map(\|a\| a.city.clone())).collect()` | `map_keypath_collection(&people, AddressCityKeyPath, \|city\| city.clone())` | Handles Option types safely |
+| **Nested Field Access** | `people.iter().map(\|p\| p.address.city.clone()).collect()` | `map_keypath_collection(&people, Person::address_r().then(Address::city_r()), \|city\| city.clone())` | Type-safe nested access |
+| **Deep Nesting** | `people.iter().map(\|p\| p.address.coordinates.latitude).collect()` | `map_keypath_collection(&people, Person::address_r().then(Address::coordinates_r()).then(Coordinates::latitude_r()), \|lat\| *lat)` | Compile-time path validation |
+| **Optional Fields** | `people.iter().filter_map(\|p\| p.address.as_ref().map(\|a\| a.city.clone())).collect()` | `map_keypath_collection(&people, Person::address_r().then(Address::city_r()), \|city\| city.clone())` | Handles Option types safely |
 
 ### Complex Operations Comparison
 
 | Operation | Traditional Approach | KeyPath HOF Approach | Benefits |
 |-----------|---------------------|---------------------|----------|
-| **Group By** | ```rust<br/>let mut groups: HashMap<String, Vec<Person>> = HashMap::new();<br/>for person in people {<br/>    let key = if person.age < 30 { "young" } else { "adult" };<br/>    groups.entry(key.to_string()).or_insert_with(Vec::new).push(person);<br/>}<br/>``` | `group_by_keypath(people, AgeKeyPath, \|&age\| if age < 30 { "young" } else { "adult" })` | Concise, type-safe grouping |
-| **Partition** | ```rust<br/>let (young, old): (Vec<Person>, Vec<Person>) = people<br/>    .into_iter()<br/>    .partition(\|p\| p.age < 30);<br/>``` | `partition_by_keypath(people, AgeKeyPath, \|&age\| age < 30)` | Field-specific partitioning |
-| **Sort** | ```rust<br/>people.sort_by(\|a, b\| a.age.cmp(&b.age));<br/>``` | `people.sort_by_keypath(AgeKeyPath, \|a, b\| a.cmp(b))` | Type-safe sorting by field |
+| **Group By** | ```rust<br/>let mut groups: HashMap<String, Vec<Person>> = HashMap::new();<br/>for person in people {<br/>    let key = if person.age < 30 { "young" } else { "adult" };<br/>    groups.entry(key.to_string()).or_insert_with(Vec::new).push(person);<br/>}<br/>``` | `group_by_keypath(&people, Person::age_r(), \|&age\| if age < 30 { "young" } else { "adult" })` | Concise, type-safe grouping |
+| **Partition** | ```rust<br/>let (young, old): (Vec<Person>, Vec<Person>) = people<br/>    .into_iter()<br/>    .partition(\|p\| p.age < 30);<br/>``` | `partition_by_keypath(people, Person::age_r(), \|&age\| age < 30)` | Field-specific partitioning |
+| **Sort** | ```rust<br/>people.sort_by(\|a, b\| a.age.cmp(&b.age));<br/>``` | `sort_by_keypath(&mut people, Person::age_r(), \|a, b\| a.cmp(b))` | Type-safe sorting by field |
 
 ### Error Handling Comparison
 
@@ -130,20 +130,8 @@ let young_people_names: Vec<String> = people
     .collect();
 
 // KeyPath HOF approach
-struct AgeKeyPath;
-impl KeyPath<Person, u32> for AgeKeyPath {
-    fn get<'a>(&self, data: &'a Person) -> &'a u32 { &data.age }
-    fn get_mut<'a>(&self, data: &'a mut Person) -> &'a mut u32 { &mut data.age }
-}
-
-struct NameKeyPath;
-impl KeyPath<Person, String> for NameKeyPath {
-    fn get<'a>(&self, data: &'a Person) -> &'a String { &data.name }
-    fn get_mut<'a>(&self, data: &'a mut Person) -> &'a mut String { &mut data.name }
-}
-
-let young_people = filter_by_keypath(people, AgeKeyPath, |&age| age < 30).unwrap();
-let young_people_names: Vec<String> = map_keypath_collection(&young_people, NameKeyPath, |name| name.to_uppercase()).unwrap();
+let young_people = filter_by_keypath(people, Person::age_r(), |&age| age < 30).unwrap();
+let young_people_names: Vec<String> = map_keypath_collection(&young_people, Person::name_r(), |name| name.to_uppercase()).unwrap();
 ```
 
 ### When to Use Each Approach
