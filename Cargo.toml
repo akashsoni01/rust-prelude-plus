@@ -10,8 +10,8 @@ keywords = ["functional-programming", "keypaths", "rust", "composable", "prelude
 categories = ["functional-programming", "data-structures"]
 
 [dependencies]
-key-paths-core = "1.0.2"
-key-paths-derive = "0.6.0"
+key-paths-core = "1.0.4"
+key-paths-derive = "0.8.0"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 tokio = { version = "1.0", optional = true, features = ["full"] }
 rayon = { version = "1.7", optional = true }

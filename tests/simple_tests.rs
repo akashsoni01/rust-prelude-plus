@@ -1,7 +1,7 @@
 use rust_prelude_plus::prelude::*;
-use key_paths_derive::Keypaths;
+use key_paths_derive::Keypath;
 
-#[derive(Keypaths, Debug, Clone, PartialEq)]
+#[derive(Keypath, Debug, Clone, PartialEq)]
 struct Person {
     name: String,
     age: u32,
@@ -10,7 +10,7 @@ struct Person {
 #[test]
 fn test_map_keypath() {
     let person = Person { name: "Alice".to_string(), age: 30 };
-    let result = map_keypath(person, Person::name_r(), |name: &String| name.to_uppercase()).unwrap();
+    let result = map_keypath(person, Person::name(), |name: &String| name.to_uppercase()).unwrap();
     assert_eq!(result, "ALICE");
 }
 
@@ -22,7 +22,7 @@ fn test_filter_by_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let young_people = filter_by_keypath(people, Person::age_r(), |age: &u32| *age < 30).unwrap();
+    let young_people = filter_by_keypath(people, Person::age(), |age: &u32| *age < 30).unwrap();
     assert_eq!(young_people.len(), 1);
     assert_eq!(young_people[0].name, "Bob");
 }
@@ -35,7 +35,7 @@ fn test_fold_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let total_age = fold_keypath(people, Person::age_r(), 0, |acc, age: &u32| acc + *age).unwrap();
+    let total_age = fold_keypath(people, Person::age(), 0, |acc, age: &u32| acc + *age).unwrap();
     assert_eq!(total_age, 90);
 }
 
@@ -47,7 +47,7 @@ fn test_find_by_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let found = find_by_keypath(people, Person::age_r(), |age: &u32| *age == 30).unwrap();
+    let found = find_by_keypath(people, Person::age(), |age: &u32| *age == 30).unwrap();
     assert!(found.is_some());
     assert_eq!(found.unwrap().name, "Alice");
 }
@@ -60,7 +60,7 @@ fn test_collect_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let ages = collect_keypath(people, Person::age_r()).unwrap();
+    let ages = collect_keypath(people, Person::age()).unwrap();
     assert_eq!(ages, vec![30, 25, 35]);
 }
 
@@ -72,7 +72,7 @@ fn test_partition_by_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let (young, old) = partition_by_keypath(people, Person::age_r(), |age: &u32| *age < 30).unwrap();
+    let (young, old) = partition_by_keypath(people, Person::age(), |age: &u32| *age < 30).unwrap();
     assert_eq!(young.len(), 1);
     assert_eq!(old.len(), 2);
     assert_eq!(young[0].name, "Bob");
@@ -86,7 +86,7 @@ fn test_map_keypath_collection() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let names = map_keypath_collection(&people, Person::name_r(), |name: &String| name.to_uppercase()).unwrap();
+    let names = map_keypath_collection(&people, Person::name(), |name: &String| name.to_uppercase()).unwrap();
     assert_eq!(names, vec!["ALICE", "BOB", "CHARLIE"]);
 }
 
@@ -98,7 +98,7 @@ fn test_group_by_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    let grouped = group_by_keypath(&people, Person::age_r(), |&age| {
+    let grouped = group_by_keypath(&people, Person::age(), |&age| {
         if age < 30 { "young" } else { "adult" }
     }).unwrap();
     
@@ -116,7 +116,7 @@ fn test_sort_by_keypath() {
         Person { name: "Charlie".to_string(), age: 35 },
     ];
     
-    sort_by_keypath(&mut people, Person::age_r(), |a, b| a.cmp(b)).unwrap();
+    sort_by_keypath(&mut people, Person::age(), |a, b| a.cmp(b)).unwrap();
     assert_eq!(people[0].age, 25);
     assert_eq!(people[1].age, 30);
     assert_eq!(people[2].age, 35);
@@ -134,7 +134,7 @@ fn test_zip_with_keypath() {
         Person { name: "David".to_string(), age: 28 },
     ];
     
-    let combined = zip_with_keypath(&people1, &people2, Person::name_r(), Person::name_r(), |name1, name2| {
+    let combined = zip_with_keypath(&people1, &people2, Person::name(), Person::name(), |name1, name2| {
         format!("{} & {}", name1, name2)
     }).unwrap();
     

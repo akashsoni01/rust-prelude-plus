@@ -18,9 +18,9 @@
 //!
 //! ```rust
 //! use rust_prelude_plus::prelude::*;
-//! use key_paths_derive::Keypaths;
+//! use key_paths_derive::Keypath;
 //!
-//! #[derive(Keypaths, Debug, Clone)]
+//! #[derive(Keypath, Debug, Clone)]
 //! struct Person {
 //!     name: String,
 //!     age: u32,
@@ -32,8 +32,8 @@
 //! ];
 //!
 //! // Filter people by age and extract their names
-//! let young_people = filter_by_keypath(people, Person::age_r(), |&age| age < 30).unwrap();
-//! let young_people_names: Vec<String> = map_keypath_collection(&young_people, Person::name_r(), |name| name.clone()).unwrap();
+//! let young_people = filter_by_keypath(people, Person::age(), |&age| age < 30).unwrap();
+//! let young_people_names: Vec<String> = map_keypath_collection(&young_people, Person::name(), |name| name.clone()).unwrap();
 //!
 //! println!("Young people: {:?}", young_people_names);
 //! ```
