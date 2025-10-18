@@ -21,7 +21,7 @@ reqwest = { version = "0.11", optional = true, features = ["json"] }
 
 [features]
 default = []
-async = ["dep:tokio", "dep:futures", "dep:reqwest"]
+async = ["dep:tokio", "dep:futures", "dep:reqwest", "dep:serde"]
 parallel = ["dep:rayon"]
 serde = ["dep:serde"]
 

@@ -10,6 +10,9 @@ use {
     std::task::{Context, Poll},
 };
 
+#[cfg(all(feature = "async", feature = "serde"))]
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "async")]
 /// Async iterator for keypath operations
 pub struct AsyncKeyPathIterator<T, S> {
@@ -32,7 +35,7 @@ where
     /// Map over keypath values asynchronously
     pub async fn map_keypath<V, F, R>(
         self,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         f: F,
     ) -> AsyncKeyPathIterator<R, impl Stream<Item = R>>
     where
@@ -48,7 +51,7 @@ where
     /// Filter by keypath predicate asynchronously
     pub async fn filter_by_keypath<V, F>(
         self,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> AsyncKeyPathIterator<T, impl Stream<Item = T>>
     where
@@ -64,7 +67,7 @@ where
     /// Find element by keypath predicate asynchronously
     pub async fn find_by_keypath<V, F>(
         self,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> KeyPathResult<Option<T>>
     where
@@ -83,7 +86,7 @@ where
     /// Fold over keypath values asynchronously
     pub async fn fold_keypath<V, F, B>(
         self,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         init: B,
         f: F,
     ) -> KeyPathResult<B>
@@ -130,7 +133,7 @@ pub mod async_collections {
     /// Async map over collection with keypath
     pub async fn map_keypath_async<T, V, F, R>(
         collection: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         f: F,
     ) -> KeyPathResult<Vec<R>>
     where
@@ -149,7 +152,7 @@ pub mod async_collections {
     /// Async filter collection by keypath
     pub async fn filter_by_keypath_async<T, V, F>(
         collection: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> KeyPathResult<Vec<T>>
     where
@@ -168,7 +171,7 @@ pub mod async_collections {
     /// Async find in collection by keypath
     pub async fn find_by_keypath_async<T, V, F>(
         collection: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> KeyPathResult<Option<T>>
     where
@@ -184,7 +187,7 @@ pub mod async_collections {
     /// Async fold over collection with keypath
     pub async fn fold_keypath_async<T, V, F, B>(
         collection: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         init: B,
         f: F,
     ) -> KeyPathResult<B>
@@ -208,13 +211,14 @@ pub mod async_io {
     use tokio::io::{AsyncRead, AsyncWrite};
     
     /// Read data from file and apply keypath operations
+    #[cfg(all(feature = "async", feature = "serde"))]
     pub async fn read_and_process_keypath<T, V, F, R>(
         file_path: &str,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
     ) -> KeyPathResult<Vec<R>>
     where
-        T: serde::de::DeserializeOwned,
+        T: DeserializeOwned,
         F: Fn(&V) -> R + Send + Sync + 'static,
     {
         let content = fs::read_to_string(file_path).await
@@ -231,14 +235,15 @@ pub mod async_io {
     }
     
     /// Write processed data to file
+    #[cfg(all(feature = "async", feature = "serde"))]
     pub async fn process_and_write_keypath<T, V, F, R>(
         data: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
         file_path: &str,
     ) -> KeyPathResult<()>
     where
-        R: serde::Serialize,
+        R: Serialize,
         F: Fn(&V) -> R + Send + Sync + 'static,
     {
         let processed = async_collections::map_keypath_async(data, keypath, processor).await?;
@@ -266,11 +271,11 @@ pub mod async_network {
     /// Fetch data from API and apply keypath operations
     pub async fn fetch_and_process_keypath<T, V, F, R>(
         url: &str,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
     ) -> KeyPathResult<Vec<R>>
     where
-        T: serde::de::DeserializeOwned,
+        T: DeserializeOwned,
         F: Fn(&V) -> R + Send + Sync + 'static,
     {
         let client = Client::new();
@@ -288,14 +293,15 @@ pub mod async_network {
     }
     
     /// Process data and send to API
+    #[cfg(all(feature = "async", feature = "serde"))]
     pub async fn process_and_send_keypath<T, V, F, R>(
         data: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
         url: &str,
     ) -> KeyPathResult<()>
     where
-        R: serde::Serialize,
+        R: Serialize,
         F: Fn(&V) -> R + Send + Sync + 'static,
     {
         let processed = async_collections::map_keypath_async(data, keypath, processor).await?;
@@ -327,7 +333,7 @@ pub mod async_database {
     /// Process database results with keypath operations
     pub async fn process_db_results_keypath<T, V, F, R>(
         results: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
     ) -> KeyPathResult<Vec<R>>
     where
@@ -339,7 +345,7 @@ pub mod async_database {
     /// Batch process database operations
     pub async fn batch_process_keypath<T, V, F, R>(
         data: Vec<T>,
-        keypath: impl KeyPaths<T, V>,
+        keypath: KeyPaths<T, V>,
         processor: F,
         batch_size: usize,
     ) -> KeyPathResult<Vec<R>>
