@@ -6,8 +6,8 @@ description = "Higher-order functions built on top of keypaths for type-safe fun
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yourusername/rust-prelude-plus"
-keywords = ["functional-programming", "keypaths", "rust", "composable", "prelude"]
-categories = ["functional-programming", "data-structures"]
+keywords = ["fp", "keypaths", "rust", "composable", "prelude"]
+categories = ["data-structures"]
 
 [dependencies]
 key-paths-core = "1.0.9"
