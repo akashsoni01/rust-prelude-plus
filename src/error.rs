@@ -28,6 +28,14 @@ pub enum KeyPathError {
     /// Parallel operation failed
     #[error("Parallel operation failed: {message}")]
     ParallelError { message: String },
+    
+    /// Network operation failed
+    #[error("Network operation failed: {message}")]
+    NetworkError { message: String },
+    
+    /// Serialization/deserialization failed
+    #[error("Serialization error: {message}")]
+    SerializationError { message: String },
 }
 
 /// Result type for keypath operations

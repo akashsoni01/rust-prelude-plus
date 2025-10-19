@@ -1,134 +1,16 @@
-//! Async operations for keypath-based functional programming
+//! Asynchronous operations for keypath-based functional programming
 
 #[cfg(feature = "async")]
 use {
-    futures::future::{Future, FutureExt},
-    futures::stream::{Stream, StreamExt},
     key_paths_core::KeyPaths,
     crate::error::{KeyPathResult, KeyPathError},
-    std::pin::Pin,
-    std::task::{Context, Poll},
+    crate::traits::KeyPathsOperable,
 };
 
-#[cfg(all(feature = "async", feature = "serde"))]
-use serde::{Deserialize, Serialize};
-
 #[cfg(feature = "async")]
-/// Async iterator for keypath operations
-pub struct AsyncKeyPathIterator<T, S> {
-    stream: S,
-    _phantom: std::marker::PhantomData<T>,
-}
-
-#[cfg(feature = "async")]
-impl<T, S> AsyncKeyPathIterator<T, S>
-where
-    S: Stream<Item = T> + Unpin,
-{
-    pub fn new(stream: S) -> Self {
-        Self {
-            stream,
-            _phantom: std::marker::PhantomData,
-        }
-    }
-    
-    /// Map over keypath values asynchronously
-    pub async fn map_keypath<V, F, R>(
-        self,
-        keypath: KeyPaths<T, V>,
-        f: F,
-    ) -> AsyncKeyPathIterator<R, impl Stream<Item = R>>
-    where
-        F: Fn(&V) -> R + Send + Sync + 'static,
-    {
-        let mapped_stream = self.stream.map(move |item| {
-            let value = keypath.get(&item);
-            f(value)
-        });
-        AsyncKeyPathIterator::new(mapped_stream)
-    }
-    
-    /// Filter by keypath predicate asynchronously
-    pub async fn filter_by_keypath<V, F>(
-        self,
-        keypath: KeyPaths<T, V>,
-        predicate: F,
-    ) -> AsyncKeyPathIterator<T, impl Stream<Item = T>>
-    where
-        F: Fn(&V) -> bool + Send + Sync + 'static,
-    {
-        let filtered_stream = self.stream.filter(move |item| {
-            let value = keypath.get(item);
-            futures::future::ready(predicate(value))
-        });
-        AsyncKeyPathIterator::new(filtered_stream)
-    }
-    
-    /// Find element by keypath predicate asynchronously
-    pub async fn find_by_keypath<V, F>(
-        self,
-        keypath: KeyPaths<T, V>,
-        predicate: F,
-    ) -> KeyPathResult<Option<T>>
-    where
-        F: Fn(&V) -> bool + Send + Sync + 'static,
-    {
-        let mut stream = self.stream;
-        while let Some(item) = stream.next().await {
-            let value = keypath.get(&item);
-            if predicate(value) {
-                return Ok(Some(item));
-            }
-        }
-        Ok(None)
-    }
-    
-    /// Fold over keypath values asynchronously
-    pub async fn fold_keypath<V, F, B>(
-        self,
-        keypath: KeyPaths<T, V>,
-        init: B,
-        f: F,
-    ) -> KeyPathResult<B>
-    where
-        F: Fn(B, &V) -> B + Send + Sync + 'static,
-        B: Send,
-    {
-        let mut acc = init;
-        let mut stream = self.stream;
-        while let Some(item) = stream.next().await {
-            let value = keypath.get(&item);
-            acc = f(acc, value);
-        }
-        Ok(acc)
-    }
-    
-    /// Collect into a vector asynchronously
-    pub async fn collect<B: FromIterator<T>>(self) -> B {
-        self.stream.collect().await
-    }
-}
-
-#[cfg(feature = "async")]
-/// Extension trait for async streams with keypath operations
-pub trait AsyncKeyPathStreamExt<T>: Stream<Item = T> {
-    /// Convert to async keypath iterator
-    fn keypath_ops(self) -> AsyncKeyPathIterator<T, Self>
-    where
-        Self: Sized,
-    {
-        AsyncKeyPathIterator::new(self)
-    }
-}
-
-#[cfg(feature = "async")]
-impl<T, S> AsyncKeyPathStreamExt<T> for S where S: Stream<Item = T> {}
-
-#[cfg(feature = "async")]
-/// Async keypath operations for collections
+/// Asynchronous keypath operations for collections
 pub mod async_collections {
     use super::*;
-    use futures::stream;
     
     /// Async map over collection with keypath
     pub async fn map_keypath_async<T, V, F, R>(
@@ -137,278 +19,271 @@ pub mod async_collections {
         f: F,
     ) -> KeyPathResult<Vec<R>>
     where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> R + Send + Sync + 'static,
+        R: Send,
     {
-        let stream = stream::iter(collection);
-        let result: Vec<R> = stream
-            .keypath_ops()
-            .map_keypath(keypath, f)
-            .await
-            .collect()
-            .await;
+        let result: Vec<R> = collection
+            .into_iter()
+            .map(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in map_keypath_async")
+                });
+                f(value)
+            })
+            .collect();
         Ok(result)
     }
     
-    /// Async filter collection by keypath
+    /// Async filter by keypath predicate
     pub async fn filter_by_keypath_async<T, V, F>(
         collection: Vec<T>,
         keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> KeyPathResult<Vec<T>>
     where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> bool + Send + Sync + 'static,
     {
-        let stream = stream::iter(collection);
-        let result: Vec<T> = stream
-            .keypath_ops()
-            .filter_by_keypath(keypath, predicate)
-            .await
-            .collect()
-            .await;
+        let result: Vec<T> = collection
+            .into_iter()
+            .filter(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in filter_by_keypath_async")
+                });
+                predicate(value)
+            })
+            .collect();
         Ok(result)
     }
     
-    /// Async find in collection by keypath
+    /// Async find by keypath predicate
     pub async fn find_by_keypath_async<T, V, F>(
         collection: Vec<T>,
         keypath: KeyPaths<T, V>,
         predicate: F,
     ) -> KeyPathResult<Option<T>>
     where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> bool + Send + Sync + 'static,
     {
-        let stream = stream::iter(collection);
-        stream
-            .keypath_ops()
-            .find_by_keypath(keypath, predicate)
-            .await
+        let result = collection
+            .into_iter()
+            .find(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in find_by_keypath_async")
+                });
+                predicate(value)
+            });
+        Ok(result)
     }
     
-    /// Async fold over collection with keypath
-    pub async fn fold_keypath_async<T, V, F, B>(
+    /// Async collect keypath values
+    pub async fn collect_keypath_async<T, V>(
         collection: Vec<T>,
         keypath: KeyPaths<T, V>,
-        init: B,
-        f: F,
-    ) -> KeyPathResult<B>
+    ) -> KeyPathResult<Vec<V>>
     where
-        F: Fn(B, &V) -> B + Send + Sync + 'static,
-        B: Send,
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync + Clone,
+        KeyPaths<T, V>: Send + Sync,
     {
-        let stream = stream::iter(collection);
-        stream
-            .keypath_ops()
-            .fold_keypath(keypath, init, f)
-            .await
+        let result: Vec<V> = collection
+            .into_iter()
+            .map(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in collect_keypath_async")
+                });
+                value.clone()
+            })
+            .collect();
+        Ok(result)
+    }
+    
+    /// Async count by keypath predicate
+    pub async fn count_by_keypath_async<T, V, F>(
+        collection: Vec<T>,
+        keypath: KeyPaths<T, V>,
+        predicate: F,
+    ) -> KeyPathResult<usize>
+    where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
+        F: Fn(&V) -> bool + Send + Sync + 'static,
+    {
+        let count = collection
+            .into_iter()
+            .filter(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in count_by_keypath_async")
+                });
+                predicate(value)
+            })
+            .count();
+        Ok(count)
+    }
+    
+    /// Async any by keypath predicate
+    pub async fn any_by_keypath_async<T, V, F>(
+        collection: Vec<T>,
+        keypath: KeyPaths<T, V>,
+        predicate: F,
+    ) -> KeyPathResult<bool>
+    where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
+        F: Fn(&V) -> bool + Send + Sync + 'static,
+    {
+        let result = collection
+            .into_iter()
+            .any(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in any_by_keypath_async")
+                });
+                predicate(value)
+            });
+        Ok(result)
+    }
+    
+    /// Async all by keypath predicate
+    pub async fn all_by_keypath_async<T, V, F>(
+        collection: Vec<T>,
+        keypath: KeyPaths<T, V>,
+        predicate: F,
+    ) -> KeyPathResult<bool>
+    where
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
+        F: Fn(&V) -> bool + Send + Sync + 'static,
+    {
+        let result = collection
+            .into_iter()
+            .all(|item| {
+                let value = item.get_at_keypath(&keypath).unwrap_or_else(|_| {
+                    panic!("KeyPath access failed in all_by_keypath_async")
+                });
+                predicate(value)
+            });
+        Ok(result)
     }
 }
 
-#[cfg(feature = "async")]
-/// Async keypath operations with I/O
-pub mod async_io {
+#[cfg(all(feature = "async", feature = "serde"))]
+/// Async operations with JSON serialization/deserialization
+pub mod async_json {
     use super::*;
-    use tokio::fs;
-    use tokio::io::{AsyncRead, AsyncWrite};
+    use serde::{Deserialize, Serialize};
     
-    /// Read data from file and apply keypath operations
-    #[cfg(all(feature = "async", feature = "serde"))]
+    /// Read and process JSON data with keypath
     pub async fn read_and_process_keypath<T, V, F, R>(
-        file_path: &str,
+        json_data: &str,
         keypath: KeyPaths<T, V>,
         processor: F,
     ) -> KeyPathResult<Vec<R>>
     where
-        T: DeserializeOwned,
+        T: Deserialize + Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> R + Send + Sync + 'static,
+        R: Send,
     {
-        let content = fs::read_to_string(file_path).await
-            .map_err(|e| KeyPathError::AsyncError {
-                message: format!("Failed to read file: {}", e),
-            })?;
-        
-        let data: Vec<T> = serde_json::from_str(&content)
-            .map_err(|e| KeyPathError::AsyncError {
-                message: format!("Failed to parse JSON: {}", e),
+        let data: Vec<T> = serde_json::from_str(json_data)
+            .map_err(|e| KeyPathError::SerializationError {
+                message: format!("Failed to deserialize JSON: {}", e),
             })?;
         
         async_collections::map_keypath_async(data, keypath, processor).await
     }
     
-    /// Write processed data to file
-    #[cfg(all(feature = "async", feature = "serde"))]
+    /// Process data and write as JSON with keypath
     pub async fn process_and_write_keypath<T, V, F, R>(
-        data: Vec<T>,
+        collection: Vec<T>,
         keypath: KeyPaths<T, V>,
         processor: F,
-        file_path: &str,
-    ) -> KeyPathResult<()>
+    ) -> KeyPathResult<String>
     where
-        R: Serialize,
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> R + Send + Sync + 'static,
+        R: Send + Serialize,
     {
-        let processed = async_collections::map_keypath_async(data, keypath, processor).await?;
+        let results = async_collections::map_keypath_async(collection, keypath, processor).await?;
         
-        let json = serde_json::to_string_pretty(&processed)
-            .map_err(|e| KeyPathError::AsyncError {
-                message: format!("Failed to serialize: {}", e),
+        let json = serde_json::to_string(&results)
+            .map_err(|e| KeyPathError::SerializationError {
+                message: format!("Failed to serialize to JSON: {}", e),
             })?;
         
-        fs::write(file_path, json).await
-            .map_err(|e| KeyPathError::AsyncError {
-                message: format!("Failed to write file: {}", e),
-            })?;
-        
-        Ok(())
+        Ok(json)
     }
 }
 
 #[cfg(feature = "async")]
-/// Async keypath operations with network I/O
-pub mod async_network {
+/// Async operations with HTTP requests
+pub mod async_http {
     use super::*;
-    use reqwest::Client;
     
-    /// Fetch data from API and apply keypath operations
+    /// Fetch data from URL and process with keypath
     pub async fn fetch_and_process_keypath<T, V, F, R>(
         url: &str,
         keypath: KeyPaths<T, V>,
         processor: F,
     ) -> KeyPathResult<Vec<R>>
     where
-        T: DeserializeOwned,
+        T: serde::de::DeserializeOwned + Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> R + Send + Sync + 'static,
+        R: Send,
     {
-        let client = Client::new();
-        let response = client.get(url).send().await
-            .map_err(|e| KeyPathError::AsyncError {
+        let response = reqwest::get(url).await
+            .map_err(|e| KeyPathError::NetworkError {
                 message: format!("Failed to fetch data: {}", e),
             })?;
         
         let data: Vec<T> = response.json().await
-            .map_err(|e| KeyPathError::AsyncError {
-                message: format!("Failed to parse JSON: {}", e),
+            .map_err(|e| KeyPathError::SerializationError {
+                message: format!("Failed to deserialize response: {}", e),
             })?;
         
         async_collections::map_keypath_async(data, keypath, processor).await
     }
     
-    /// Process data and send to API
-    #[cfg(all(feature = "async", feature = "serde"))]
+    /// Process data and send HTTP POST request
     pub async fn process_and_send_keypath<T, V, F, R>(
-        data: Vec<T>,
+        collection: Vec<T>,
         keypath: KeyPaths<T, V>,
         processor: F,
         url: &str,
-    ) -> KeyPathResult<()>
+    ) -> KeyPathResult<reqwest::Response>
     where
-        R: Serialize,
+        T: Send + Sync + KeyPathsOperable,
+        V: Send + Sync,
+        KeyPaths<T, V>: Send + Sync,
         F: Fn(&V) -> R + Send + Sync + 'static,
+        R: Send + serde::Serialize,
     {
-        let processed = async_collections::map_keypath_async(data, keypath, processor).await?;
+        let results = async_collections::map_keypath_async(collection, keypath, processor).await?;
         
-        let client = Client::new();
+        let client = reqwest::Client::new();
         let response = client.post(url)
-            .json(&processed)
+            .json(&results)
             .send()
             .await
-            .map_err(|e| KeyPathError::AsyncError {
+            .map_err(|e| KeyPathError::NetworkError {
                 message: format!("Failed to send data: {}", e),
             })?;
         
-        if !response.status().is_success() {
-            return Err(KeyPathError::AsyncError {
-                message: format!("API request failed with status: {}", response.status()),
-            });
-        }
-        
-        Ok(())
-    }
-}
-
-#[cfg(feature = "async")]
-/// Async keypath operations with database
-pub mod async_database {
-    use super::*;
-    
-    /// Process database results with keypath operations
-    pub async fn process_db_results_keypath<T, V, F, R>(
-        results: Vec<T>,
-        keypath: KeyPaths<T, V>,
-        processor: F,
-    ) -> KeyPathResult<Vec<R>>
-    where
-        F: Fn(&V) -> R + Send + Sync + 'static,
-    {
-        async_collections::map_keypath_async(results, keypath, processor).await
-    }
-    
-    /// Batch process database operations
-    pub async fn batch_process_keypath<T, V, F, R>(
-        data: Vec<T>,
-        keypath: KeyPaths<T, V>,
-        processor: F,
-        batch_size: usize,
-    ) -> KeyPathResult<Vec<R>>
-    where
-        F: Fn(&V) -> R + Send + Sync + 'static,
-    {
-        let mut results = Vec::new();
-        let mut stream = futures::stream::iter(data);
-        
-        while let Some(batch) = stream.next().await {
-            let batch_results = async_collections::map_keypath_async(
-                vec![batch],
-                keypath,
-                &processor,
-            ).await?;
-            results.extend(batch_results);
-        }
-        
-        Ok(results)
-    }
-}
-
-#[cfg(not(feature = "async"))]
-/// Placeholder module when async feature is not enabled
-pub mod async_collections {
-    use crate::error::KeyPathError;
-    
-    pub fn async_not_available() -> KeyPathError {
-        KeyPathError::AsyncError {
-            message: "Async operations require the 'async' feature to be enabled".to_string(),
-        }
-    }
-}
-
-#[cfg(not(feature = "async"))]
-pub mod async_io {
-    use crate::error::KeyPathError;
-    
-    pub fn async_not_available() -> KeyPathError {
-        KeyPathError::AsyncError {
-            message: "Async I/O operations require the 'async' feature to be enabled".to_string(),
-        }
-    }
-}
-
-#[cfg(not(feature = "async"))]
-pub mod async_network {
-    use crate::error::KeyPathError;
-    
-    pub fn async_not_available() -> KeyPathError {
-        KeyPathError::AsyncError {
-            message: "Async network operations require the 'async' feature to be enabled".to_string(),
-        }
-    }
-}
-
-#[cfg(not(feature = "async"))]
-pub mod async_database {
-    use crate::error::KeyPathError;
-    
-    pub fn async_not_available() -> KeyPathError {
-        KeyPathError::AsyncError {
-            message: "Async database operations require the 'async' feature to be enabled".to_string(),
-        }
+        Ok(response)
     }
 }

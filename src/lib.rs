@@ -105,8 +105,8 @@ pub mod higher_order;
 pub mod traits;
 pub mod composable;
 pub mod collections;
-// pub mod parallel;  // Disabled due to key-paths-core Sync issues
-// pub mod async_ops; // Disabled due to key-paths-core Sync issues
+pub mod parallel;
+pub mod async_ops;
 
 /// Re-exports for convenient usage
 pub mod prelude {
@@ -116,11 +116,11 @@ pub mod prelude {
     pub use crate::composable::{pipe, chain_keypath_ops, when_keypath, unless_keypath, KeyPathsChain, ComposableIterator};
     pub use crate::collections::{KeyPathsCollectionExt, specialized};
     
-        // #[cfg(feature = "parallel")]
-        // pub use crate::parallel::*;
+        #[cfg(feature = "parallel")]
+        pub use crate::parallel::*;
         
-        // #[cfg(feature = "async")]
-        // pub use crate::async_ops::*;
+        #[cfg(feature = "async")]
+        pub use crate::async_ops::*;
 }
 
 /// Version information

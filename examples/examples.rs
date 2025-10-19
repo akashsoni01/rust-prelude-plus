@@ -4,7 +4,6 @@ use key_paths_derive::Keypath;
 use rust_prelude_plus::prelude::*;
 use rust_prelude_plus::traits::{KeyPathsIterator, KeyPathsOperable};
 use rust_prelude_plus::collections::KeyPathsCollectionExt;
-use std::collections::HashMap;
 
 /// Example data structure for demonstrating keypath operations
 #[derive(Keypath, Debug, Clone, PartialEq)]
@@ -82,7 +81,7 @@ fn test_iterator_extensions(people: &[Person]) {
     // Test iterator extensions
     let names_from_iter: Vec<String> = people
         .to_vec()
-            .into_iter()
+        .into_iter()
         .map_keypath(Person::name(), |name: &String| name.clone());
     println!("Names from iterator: {:?}", names_from_iter);
     
