@@ -23,8 +23,8 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 rust-prelude-plus = "0.1.0"
-key-paths-core = "1.0.9"
-key-paths-derive = "0.8.0"
+key-paths-core = "1.6.0"
+key-paths-derive = "1.0.9"
 ```
 
 ### Basic Usage
@@ -356,7 +356,7 @@ The library is designed for performance with minimal overhead:
 ### Benchmark Environment
 
 **Hardware**: MacBook Air (Apple M1, 8 cores: 4 performance + 4 efficiency, 16 GB RAM)
-**Software**: Rust 1.85.0, key-paths-core 1.0.9, rayon 1.11.0, tokio 1.48.0
+**Software**: Rust 1.85.0, key-paths-core 1.6.0, key-paths-derive 1.0.9, rayon 1.11.0, tokio 1.48.0
 
 ### Performance Comparison: Traditional vs Parallel vs Async
 
@@ -541,8 +541,8 @@ at your option.
 ### Version 0.1.0 Features
 
 - **Updated Dependencies**: 
-  - `key-paths-core` 1.0.9 (supports `Send + Sync`)
-  - `key-paths-derive` 0.8.0 (uses `Keypath` macro)
+  - `key-paths-core` 1.6.0 (supports `Send + Sync`)
+  - `key-paths-derive` 1.0.9 (uses `Keypath` macro)
 - **Enhanced Performance**: Comprehensive benchmarking with Apple M1 optimization
 - **Memory Efficiency**: `Rc` and `Arc` support to avoid unnecessary cloning
 - **Lazy Evaluation**: Iterator-based operations for efficient memory usage
